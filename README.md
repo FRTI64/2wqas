@@ -1,4 +1,7 @@
 ## 注意事项
+
+0）**最新** Cloudflare Page域名还没被SNI阻断，利用[此项目](https://github.com/xyTom/cf-page-func-proxy)可利用CF Pages反代。（无需自定义域名）
+
 1）5月8日晚，CloudFlare Workers 的业务域名 Workers.dev 被防火长城 DNS 污染、SNI阻断。
 
 2）CloudFlare Workers，可自定义workers域名，教程已更新至博客`ifts.ml`；经过添加自定义域名，更换Host和SNI后已可正常使用。
@@ -38,7 +41,7 @@
 | ------------ | ------------ | ------------ |
 |  PROTOCOL |  vmess<br>vless（可选） |  协议：nginx+vmess+ws+tls或是nginx+vless+ws+tls |
 |  UUID |  [uuid在线生成器](https://www.uuidgenerator.net "uuid在线生成器") | 用户主ID  |
-|  WS_PATH | 默认为`/ray` |  路径，请勿使用`/speedtest`，`/`，`/test` 等已经被占用的请求路径 |
+|  WS_PATH | 默认为`/daochen6` |  路径，请勿使用`/speedtest`，`/`，`/test` 等已经被占用的请求路径 |
 
 ### 进阶
 heorku可以绑卡（应用一直在线，不扣费），绑定域名，套cf，[uptimerobot](https://uptimerobot.com/) 定时访问防止休眠（只监控CF Workers反代地址好了，不然几个账户一起监控没几天就把时间耗完了）
@@ -172,6 +175,49 @@ addEventListener(
 ```
 </details>
 
+<details>
+<summary>CloudFlare Pages单账户反代代码</summary>
+
+```js
+export default {
+  async fetch(request, env) {
+    let url = new URL(request.url);
+    if (url.pathname.startsWith('/')) {
+      url.hostname = 'app0.herokuapp.com'
+      let new_request = new Request(url, request);
+      return fetch(new_request);
+    }
+    return env.ASSETS.fetch(request);
+  },
+};
+```
+</details>
+
+<details>
+<summary>CloudFlare Pages单双日轮换反代代码</summary>
+
+```js
+export default {
+  async fetch(request, env) {
+    const day1 = 'app0.herokuapp.com'
+    const day2 = 'app1.herokuapp.com'
+    let url = new URL(request.url);
+    if (url.pathname.startsWith('/')) {
+      let day = new Date()
+      if (day.getDay() % 2) {
+        url.hostname = day1
+      } else {
+        url.hostname = day2
+      }
+      let new_request = new Request(url, request);
+      return fetch(new_request);
+    }
+    return env.ASSETS.fetch(request);
+  },
+};
+```
+</details>
+
 ### 客户端配置
 
 ```
@@ -187,5 +233,5 @@ addEventListener(
     #skip-cert-verify: true
     servername: yourName.workers.dev
     network: ws
-    ws-path: /ray
+    ws-path: /daochen6
 ```
